@@ -4,6 +4,12 @@ train <- read.csv("train.csv")
 #Structure of data
 str(train)
 
+#Change datatype of Date from "char" to "date"
+train$Date <- as.Date(as.character(train$Date))
+class(train$Date) #Changed to Date: Checked.
+#Change StateHoliday to factor
+train$StateHoliday <- as.factor(as.character(train$StateHoliday))
+
 #Check if there's any NA
 table (complete.cases (train))
 #no NULL values found
@@ -11,9 +17,9 @@ table (complete.cases (train))
 summary(train)
 #Sales and Customers have outliers - Max values are much higher than the mean
 boxplot.default(train$Customers,horizontal = TRUE)
-#Verified: Customers have outliers
+#Verified: Customers have outliers but makes sense
 boxplot.default(train$Sales,horizontal = TRUE)
-#Verified: Sales have outliers
+#Verified: Sales have outliers but makes sense
 
 #Assigning column names for store
 colNames <- c ("Store", "StoreType",	"Assortment",	"CompetitionDistance",	
