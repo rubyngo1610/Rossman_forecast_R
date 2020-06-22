@@ -14,3 +14,28 @@ boxplot.default(train$Customers,horizontal = TRUE)
 #Verified: Customers have outliers
 boxplot.default(train$Sales,horizontal = TRUE)
 #Verified: Sales have outliers
+
+#Assigning column names
+colNames <- c ("Store", "StoreType",	"Assortment",	"CompetitionDistance",	
+              "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear",	
+              "PromoParticipation",	"PromoParticipationSinceWeek",	
+              "PromoParticipationSinceYear", "PromoInterval")
+
+#Reading store data
+store <- read.table ("store.csv", header = TRUE, sep = ",",
+                       strip.white = TRUE, col.names = colNames,
+                       na.strings = "?", stringsAsFactors = TRUE)
+#Display structure of the data
+str (store)
+
+#NA cases
+table (complete.cases (store))
+
+#Table summary
+summary(store)
+
+#Replace the NAs in Competition Distance by its median
+store$CompetitionDistance[is.na(store$CompetitionDistance)] <- median(store$CompetitionDistance, na.rm=TRUE)
+
+#Replace the remaining NA's by 0
+store[is.na(store)] <- 0
