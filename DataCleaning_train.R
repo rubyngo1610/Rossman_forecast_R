@@ -11,5 +11,3 @@ boxplot.default(train$Customers,horizontal = TRUE)
 #Verified: Customers have outliers
 boxplot.default(train$Sales,horizontal = TRUE)
 #Verified: Sales have outliers
-
-head(train,n=5)
