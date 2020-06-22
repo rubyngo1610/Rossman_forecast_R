@@ -15,13 +15,13 @@ boxplot.default(train$Customers,horizontal = TRUE)
 boxplot.default(train$Sales,horizontal = TRUE)
 #Verified: Sales have outliers
 
-#Assigning column names
+#Assigning column names for store
 colNames <- c ("Store", "StoreType",	"Assortment",	"CompetitionDistance",	
               "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear",	
               "PromoParticipation",	"PromoParticipationSinceWeek",	
               "PromoParticipationSinceYear", "PromoInterval")
 
-#Reading store data
+#Read store data
 store <- read.table ("store.csv", header = TRUE, sep = ",",
                        strip.white = TRUE, col.names = colNames,
                        na.strings = "?", stringsAsFactors = TRUE)
