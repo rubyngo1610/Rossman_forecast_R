@@ -1,6 +1,9 @@
 #Import data
 train <- read.csv("train.csv")
 
+#Structure of data
+str(train)
+
 #Check if there's any NA
 table (complete.cases (train))
 #no NULL values found
