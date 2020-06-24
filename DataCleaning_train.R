@@ -9,6 +9,9 @@ train$Date <- as.Date(as.character(train$Date))
 class(train$Date) #Changed to Date: Checked.
 #Change StateHoliday to factor
 train$StateHoliday <- as.factor(as.character(train$StateHoliday))
+train$Open <- as.factor(as.character(train$Open))
+train$Promo <- as.factor(as.character(train$Promo))
+train$SchoolHoliday <- as.factor(as.character(train$SchoolHoliday))
 
 #Check if there's any NA
 table (complete.cases (train))
