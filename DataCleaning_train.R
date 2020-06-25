@@ -48,3 +48,12 @@ store$CompetitionDistance[is.na(store$CompetitionDistance)] <- median(store$Comp
 
 #Replace the remaining NA's by 0
 store[is.na(store)] <- 0
+
+#Join table using dplyr
+library(dplyr)
+library(ggplot2)
+train_store <- merge(train, store, by = "Store", all = TRUE)
+ggplot(train_store["Sales" != 0], aes(x = factor("PromoInterval"), y = "Sales")) + 
+  geom_jitter(alpha = 0.1) + 
+  geom_boxplot(color = "yellow", outlier.colour = NA, fill = NA)
+
