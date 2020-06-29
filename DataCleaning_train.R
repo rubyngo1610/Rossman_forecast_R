@@ -18,11 +18,6 @@ table (complete.cases (train))
 #no NULL values found
 
 summary(train)
-#Sales and Customers have outliers - Max values are much higher than the mean
-boxplot.default(train$Customers,horizontal = TRUE)
-#Verified: Customers have outliers but makes sense
-boxplot.default(train$Sales,horizontal = TRUE)
-#Verified: Sales have outliers but makes sense
 
 #Assigning column names for store
 colNames <- c ("Store", "StoreType",	"Assortment",	"CompetitionDistance",	
