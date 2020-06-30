@@ -8,6 +8,7 @@ str(train)
 train$Date <- as.Date(as.character(train$Date))
 class(train$Date) #Changed to Date: Checked.
 #Change StateHoliday to factor
+train$DayOfWeek <- as.factor(as.integer(train$DayOfWeek))
 train$StateHoliday <- as.factor(as.character(train$StateHoliday))
 train$Open <- as.factor(as.character(train$Open))
 train$Promo <- as.factor(as.character(train$Promo))
@@ -48,6 +49,7 @@ store[is.na(store)] <- 0
 library(dplyr)
 library(ggplot2)
 train_store <- merge(train, store, by = "Store", all = TRUE)
+write.csv(train_store,"InsertMergeSheetNameHere.csv") #Save file
 ggplot(train_store["Sales" != 0], aes(x = factor("PromoInterval"), y = "Sales")) + 
   geom_jitter(alpha = 0.1) + 
   geom_boxplot(color = "yellow", outlier.colour = NA, fill = NA)
