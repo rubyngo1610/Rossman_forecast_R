@@ -1,0 +1,43 @@
+#Join table
+train_store <- merge(train, store, by = "Store")
+
+#Determine the sales of each PromoInterval
+boxplot(Sales ~ PromoInterval, data = train_store,
+        main = "Sales based on the PromoInterval",
+        xlab = "PromoInterval", ylab = "Sales", col = "blue")
+
+#Determine the sales of each assortment
+ggplot(train_store["Sales" != 0], 
+       aes(x = as.Date(Date), y = Sales, color = factor(Assortment))) + 
+  geom_smooth(size = 2)
+
+a <- mean(train_store$Sales[train_store$Assortment == "a"])
+b <- mean(train_store$Sales[train_store$Assortment == "b"])
+c <- mean(train_store$Sales[train_store$Assortment == "c"])
+barplot(c(a,b,c), main = "Average sales per assortment", names.arg = c("a","b","c"))
+
+#Correlation between Competition Distance and Sales
+qplot("CompetitionDistance" != 0, Sales, data = train_store)
+
+# Days since start of promo2
+store$Promo2Since <- as.POSIXct(paste(store$PromoParticipationSinceYear, 
+                                      store$PromoParticipationSinceWeek, 1, sep = "-"),
+                                format = "%Y-%U-%u")
+hist(as.numeric(as.POSIXct("2015-10-01", format = "%Y-%m-%d") - store$Promo2Since), 
+     100, main = "Days since start of promo2")
+
+# PromoParticipation vs Sales
+boxplot(Sales ~ PromoParticipation, data = train_store,
+        main = "Sales based on the PromoParticipation",
+        xlab = "PromoParticipation", ylab = "Sales", col = "yellow")
+row_to_keep = which(train_store$Open > 0)
+openday <- train_store[row_to_keep,]
+summary(openday)
+# Sales between promo day and not promo day
+ggplot(openday["Sales" != 0], 
+       aes(x = as.Date(Date), y = Sales, color = factor(Promo))) + 
+  geom_smooth(size = 2)
+promoY <- mean(train_store$Sales[train_store$Promo == 1])
+promoN <- mean(train_store$Sales[train_store$Promo == 0])
+barplot(c(promoY,promoN), main = "Average sales per Promo", names.arg = c("1","0"))
+
