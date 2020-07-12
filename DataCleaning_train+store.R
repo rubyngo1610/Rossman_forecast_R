@@ -1,3 +1,6 @@
+#Load package
+library(dplyr)
+
 #Import data
 train <- read.csv("train.csv")
 
@@ -46,11 +49,5 @@ store$CompetitionDistance[is.na(store$CompetitionDistance)] <- median(store$Comp
 store[is.na(store)] <- 0
 
 #Join table using dplyr
-library(dplyr)
-library(ggplot2)
-train_store <- merge(train, store, by = "Store", all = TRUE)
-write.csv(train_store,"InsertMergeSheetNameHere.csv") #Save file
-ggplot(train_store["Sales" != 0], aes(x = factor("PromoInterval"), y = "Sales")) + 
-  geom_jitter(alpha = 0.1) + 
-  geom_boxplot(color = "yellow", outlier.colour = NA, fill = NA)
+train_store <- merge(train, store, by = "Store")
 
