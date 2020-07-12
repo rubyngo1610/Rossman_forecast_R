@@ -2,6 +2,7 @@
 options("scipen" = 10) #for graph to show full number
 library(ggplot2)
 library(sqldf)
+library(dplyr)
 
 ##Sales ~ Store
 #Min,Max of total sales
@@ -106,3 +107,61 @@ d2 <- mean(train_store$Sales[train_store$StoreType=="d"])
 barplot(c(a2,b2,c2,d2),main="Mean sales of each store type",names.arg = c("a","b","c","d"))
 
 #--> Type b has the highest sales
+
+#Determine the sales of each PromoInterval
+boxplot(Sales ~ PromoInterval, data = train_store,
+        main = "Sales based on the PromoInterval",
+        xlab = "PromoInterval", ylab = "Sales", col = "blue")
+
+# Take a closer look at the JAJO interval
+summary(train_store[train_store$PromoInterval == "Jan,Apr,Jul,Oct",]$Sales)
+
+sqldf("SELECT PromoInterval, COUNT(PromoInterval), FROM train_store WHERE Sales > 7614 + 1.5 * (7614-3680) GROUP BY PromoInterval")
+
+#No interval stands out but Jan, Apr, Jun, Oct had the highest mean and number of outliers -> predictor value
+
+#Determine the sales of each assortment
+ggplot(train_store["Sales" != 0], 
+       aes(x = as.Date(Date), y = Sales, color = factor(Assortment))) + 
+  geom_smooth(size = 2)
+
+#Average sales per assortment
+a <- mean(train_store$Sales[train_store$Assortment == "a"])
+b <- mean(train_store$Sales[train_store$Assortment == "b"])
+c <- mean(train_store$Sales[train_store$Assortment == "c"])
+barplot(c(a,b,c), main = "Average sales per assortment", names.arg = c("a","b","c"))
+
+#Customers per assortment
+a1 <- sum(train_store$Customers[train_store$Assortment == "a"])
+b1 <- sum(train_store$Customers[train_store$Assortment == "b"])
+c1 <- sum(train_store$Customers[train_store$Assortment == "c"])
+barplot(c(a1,b1,c1), main = "Customers per assortment", names.arg = c("a","b","c"))
+#Assortment b (b>c>a) had the best sales and always had higher sales than the other assortments, even its average sales. Furthermore, the number of customers who bought b are extremely low compare to other assortments'
+#--> B's sales performance was good.So why the sales performance of a and c are worse? What qualities did b have?
+
+#Correlation between Competition Distance and Sales
+plot(Sales ~ CompetitionDistance, train_store)
+#There is a clear correlation between sales and competition distance. The plot indicates that the closer the competitor, the lower the sales.
+
+# Days since start of promo2
+#Need to fix and try to find a way to leverage the data
+
+# PromoContinuation vs Sales
+boxplot(Sales ~ PromoContinuation, data = train_store,
+        main = "Sales based on the PromoContinuation",
+        xlab = "PromoContinuation", ylab = "Sales", col = "yellow")
+# Sales when having a 2nd Promo were less than without a 2nd Promo but not significant
+#Consider the promo data on Open days
+row_to_keep = which(train_store$Open > 0)
+openday <- train_store[row_to_keep,]
+summary(openday)
+#The numbers of PromoContinuation are nearly equal
+
+#Sales between promo day and not promo day
+ggplot(openday["Sales" != 0], 
+       aes(x = as.Date(Date), y = Sales, color = factor(Promo))) + 
+  geom_smooth(size = 2)
+promoY <- mean(train_store$Sales[train_store$Promo == 1])
+promoN <- mean(train_store$Sales[train_store$Promo == 0])
+barplot(c(promoY,promoN), main = "Average sales per Promo", names.arg = c("1","0"))
+#Sales nearly doubled when there was a promo on that day
