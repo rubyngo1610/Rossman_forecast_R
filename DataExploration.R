@@ -1,6 +1,7 @@
 #EXPLORATION
 options("scipen" = 10) #for graph to show full number
 library(ggplot2)
+library(sqldf)
 
 ##Sales ~ Store
 #Min,Max of total sales
@@ -36,10 +37,19 @@ nrow(subset(Day7Sales,Open==0)) #--> All stores are open on Day 7,
 #but some of them don't have any sales and customers at all
 nrow(Day7Sales) - nrow(subset(Day7Sales,Sales==0))
 #--> 3593/144730 records have sales on Day 7
+sqldf("select Sales, sum(StateHoliday), sum(SchoolHoliday) from Day7Sales where Sales==0 group by Sales")
+#On School Holiday that fell on Sunday, most stores saw no sales.
+#However, on Sunday's State Holiday, every stores had sales (If it's not State Holiday, all Sunday's sales would be 0)
 
 ##Sales ~ Date
 ggplot(train_store, aes(x=Date,y=Sales)) + geom_smooth()
 #-->Sales increased from 2013 to 2015
+ggplot(train_store, aes(x=Date,y=Customers)) + geom_smooth()
+avgsalespercustomerbydate <- sqldf("select Date, sum(Sales)/Customers as Average from train_store where Sales>0 group by Date")
+ggplot(avgsalespercustomerbydate, aes(x=Date, y=Average))+ geom_smooth()
+#Near the end of 2014, Sales increased but Sales per Customers decreased.
+#Thus, both Sales and Customers increased but they bought less than in the past. 
+#--> Look closer into the end of 2014.
 
 ##Sales ~ Customers
 C <- vector(mode = "numeric",length = 7)
