@@ -5,37 +5,30 @@ library(sqldf)
 library(dplyr)
 
 ##Sales ~ Store
-#Min,Max of total sales
+#Min,Max of mean sales
 AA <- vector(mode = "numeric",length = 1115)
 for (i in 1:1115) {
-  AA[i] <- sum(train_store$Sales[train_store$Store==i])
+  AA[i] <- mean(train_store$Sales[train_store$Store==i])
 }
-match(max(AA),AA) #--> Store 262 has the max total sales
-match(min(AA),AA) #--> Store 307 has the min total sales
+match(max(AA),AA) #--> Store 262 has the max mean sales
+match(min(AA),AA) #--> Store 307 has the min mean sales
 #Number of stores in each range of sales
 A <- vector(mode = "numeric",length = 1115)
 for (i in 1:1115) {
   A[i] <- mean(train_store$Sales[train_store$Store==i])
 }
 summary(A) #get value of 1st quadrant and 3rd quadrant
-firstquantile <- A[A<=4412] 
-middle <- A[A>4412 & A<6634]
-thirdquantile <- A[A>=6634] 
-barplot(c(length(firstquantile),length(middle),length(thirdquantile))
-,main="Number of stores by sales range",names.arg = c("1st quantile",
-"Middle","3rd quantile"),xlab="Sales",ylab="No. of stores")
 #--> Sales vary from stores to stores --> Strong predictor value
 
 ##Sales ~ DayOfWeek
 ggplot(train_store, aes(x=Date,y=Sales,color=DayOfWeek)) + geom_smooth()
-#--> Day 7 is extremely low compared to other dates --> Strong predictor value
+#--> Day 7 is extremely low compared to other dates 
 #Look closer at Day 7
 train$DayOfWeek <- as.integer(as.factor(train$DayOfWeek))
 Day7Sales <- subset(train_store,DayOfWeek==7)
 summary(Day7Sales) #-> Many stores have 0 sales on Sunday
 Day7Sales$Open <- as.integer(as.factor(Day7Sales$Open))
-nrow(subset(Day7Sales,Open==0)) #--> All stores are open on Day 7,
-#but some of them don't have any sales and customers at all
+nrow(subset(Day7Sales,Open==0)) #--> All stores are open on Day 7, but some of them don't have any sales and customers at all
 nrow(Day7Sales) - nrow(subset(Day7Sales,Sales==0))
 #--> 3593/144730 records have sales on Day 7
 sqldf("select Sales, sum(StateHoliday), sum(SchoolHoliday) from Day7Sales where Sales==0 group by Sales")
@@ -57,8 +50,8 @@ C <- vector(mode = "numeric",length = 7)
 for (i in 1:7) {
   C[i] <- sum(train_store$Customers[train_store$DayOfWeek==i])
 }
-barplot(C,main="Total customers by Day of Week",names.arg = dput(b))
-#--> Day 1 the highest volume, 
+barplot(C,main="Total customers by Day of Week",names.arg = dput(1:7))
+#--> Day 7 saw a significantly lower number of customers, just like sales.
 # Check for positive correlation
 D <- matrix(1:1115,nrow=1115,ncol=1)
 for (i in 1:1115) {
@@ -66,9 +59,6 @@ for (i in 1:1115) {
 }
 qplot(AA,D) + xlab("Sales") + ylab("Customers") + geom_smooth(method="lm")
 #--> Store and Customers are positively related
-
-##Sales ~ Open
-#Some stores were opened but didn't have any sales
 
 ##Sales ~ StateHoliday
 OpenOnHoliday <- subset(train_store,StateHoliday != 0 & Open==1)
