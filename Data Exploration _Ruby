@@ -1,3 +1,61 @@
+#Load packages
+library(dplyr)
+library(ggplot2)
+library(sqldf)
+
+#Assigning column names
+colNames <- c ("Store", "StoreType",	"Assortment",	"CompetitionDistance",	
+               "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear",	
+               "PromoParticipation",	"PromoParticipationSinceWeek",	
+               "PromoParticipationSinceYear", "PromoInterval")
+
+#Reading store data
+store <- read.table ("D:\\Dickinson\\R Project\\store.csv", header = TRUE, sep = ",",
+                     strip.white = TRUE, col.names = colNames,
+                     na.strings = "?", stringsAsFactors = TRUE)
+#Display structure of the data
+str (store)
+
+#NA cases
+table (complete.cases (store))
+
+#Replace the NAs in Competition Distance by its median
+store$CompetitionDistance[is.na(store$CompetitionDistance)] <- median(store$CompetitionDistance, na.rm=TRUE)
+
+#Replace the remaining NA's by 0
+store[is.na(store)] <- 0
+
+#Change data types
+store$PromoParticipation <- as.factor(as.character(store$PromoParticipation))
+store$CompetitionOpenSinceYear <- as.factor(as.character(store$CompetitionOpenSinceYear))
+store$CompetitionOpenSinceMonth <- as.factor(as.character(store$CompetitionOpenSinceMonth))
+store$PromoParticipationSinceWeek <- as.factor(as.character(store$PromoParticipationSinceWeek))
+store$PromoParticipationSinceYear <- as.factor(as.character(store$PromoParticipationSinceYear))
+
+#Table summary
+summary(store)
+
+#Import data
+train <- read.csv("D:\\Dickinson\\R Project\\train.csv")
+
+#Structure of data
+str(train)
+
+#Change datatype of Date from "char" to "date"
+train$Date <- as.Date(as.character(train$Date))
+class(train$Date) #Changed to Date: Checked.
+#Change StateHoliday to factor
+train$StateHoliday <- as.factor(as.character(train$StateHoliday))
+#train$Open <- as.factor(as.character(train$Open))
+train$Promo <- as.factor(as.character(train$Promo))
+train$SchoolHoliday <- as.factor(as.character(train$SchoolHoliday))
+
+#Check if there's any NA
+table (complete.cases (train))
+#no NULL values found
+
+summary(train)
+
 #Join table
 train_store <- merge(train, store, by = "Store")
 
@@ -6,11 +64,12 @@ boxplot(Sales ~ PromoInterval, data = train_store,
         main = "Sales based on the PromoInterval",
         xlab = "PromoInterval", ylab = "Sales", col = "blue")
 
-# Take a closer look at the FMAN interval
-max(train_store[train_store$PromoInterval == "Feb,May,Aug,Nov",]$Sales)
+# Take a closer look at the JAJO interval
+nrow(train_store[train_store$PromoInterval == "Jan,Apr,Jul,Oct",]$Sales)
 
-#No interval stands out but Jan, Apr, Jun, Oct had the highest number of outliers while Feb,May,Aug,Nov had the biggest outlier
+sqldf("SELECT PromoInterval, COUNT(PromoInterval) FROM train_store WHERE Sales > 13000 GROUP BY PromoInterval")
 
+#No interval stands out but Jan, Apr, Jun, Oct had the highest mean and number of outliers -> predictor value
 #Determine the sales of each assortment
 ggplot(train_store["Sales" != 0], 
        aes(x = as.Date(Date), y = Sales, color = factor(Assortment))) + 
@@ -23,22 +82,17 @@ barplot(c(a,b,c), main = "Average sales per assortment", names.arg = c("a","b","
 #Assortment b (b>c>a) had the best sales and always had higher sales than the other assortments, even its average sales
 
 #Correlation between Competition Distance and Sales
-qplot("CompetitionDistance" != 0, Sales, data = train_store)
-#Indifferent, there is no clear correlation between sales-CD
+plot(Sales ~ CompetitionDistance, train_store)
+#There is no clear correlation between sales and competition distance
 
 # Days since start of promo2
-store$Promo2Since <- as.POSIXct(paste(store$PromoParticipationSinceYear, 
-                                      store$PromoParticipationSinceWeek, 1, sep = "-"),
-                                format = "%Y-%U-%u")
-hist(as.numeric(as.POSIXct("2015-10-01", format = "%Y-%m-%d") - store$Promo2Since), 
-     100, main = "Days since start of promo2")
 #Need to fix and try to find a way to leverage the data
 
 # PromoParticipation vs Sales
 boxplot(Sales ~ PromoParticipation, data = train_store,
         main = "Sales based on the PromoParticipation",
         xlab = "PromoParticipation", ylab = "Sales", col = "yellow")
-# Sales when having a Promo were less than without Promo may because of promotion, but there were some outliers-> people bought more when there were promotion
+# Sales when having a Promo were less than without Promo (may because of promotion), but there were some outliers-> people bought more when there were promotion
 
 row_to_keep = which(train_store$Open > 0)
 openday <- train_store[row_to_keep,]
