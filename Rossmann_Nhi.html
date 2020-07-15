@@ -115,18 +115,18 @@ hist(MeanSalesPerStore,100)
 summary(MeanSalesPerStore)
 ```
 Average sales mostly range from 2500 - 7500
+Outliers: Store with over 10000 in mean sales
 Sales vary from stores to stores --> Strong predictor value
 
 Sales in relation to DayOfWeek
 ```{r}
-ggplot(train_store, aes(x=Date,y=Sales,color=DayOfWeek)) + geom_smooth()
+boxplot(Sales ~ DayOfWeek,data=train_store)
 ```
 
-Day 7 is extremely low compared to other dates --> Strong predictor value
+Day 7 is extremely low compared to other dates
 We will look closer at Day 7.
 
 ```{r}
-train$DayOfWeek <- as.integer(as.factor(train$DayOfWeek))
 Day7Sales <- subset(train_store,DayOfWeek==7)
 summary(Day7Sales) 
 ```
@@ -140,7 +140,7 @@ All open stores had sales
 ```{r}
 sqldf("select Sales, sum(StateHoliday), sum(SchoolHoliday) from Day7Sales where Sales==0 group by Sales")
 ```
-On State Holiday that fell on Sunday, most stores saw no sales. All Sundays with School Holiday had sales.
+On State Holiday that fell on Sunday, no stores had sales. School Holidays that fell on Sunday had sales.
 
 Sales in relation to Date
 ```{r}
@@ -161,56 +161,46 @@ ggplot(train_store, aes(x=Date,y=Customers)) + geom_smooth()
 ```
 
 Customers increased from 2013 to 2015
-```{r}
-MeanSalePerCust <- vector(mode = "numeric",length = 7)
-for (i in 1:7) {
-  MeanSalePerCust [i] <- mean(train_store$Customers[train_store$DayOfWeek==i])
-}
-barplot(MeanSalePerCust ,main="Total customers by Day of Week",names.arg = dput(1:7))
-```
 
-Day 1 had the most customers
+Day 1 of the week (Monday) had the most customers
 
-Sales ~ StateHoliday
+Sales in relation to StateHoliday
 ```{r}
 OpenOnHoliday <- subset(train_store,StateHoliday != 0 & Open==1)
 NotOpenOnHoliday <- subset(train_store,StateHoliday != 0 & Open==0)
 nrow(OpenOnHoliday) 
 nrow(NotOpenOnHoliday) #--> 910/31050 records open on holidays
-a1 <- sum(OpenOnHoliday$Sales[OpenOnHoliday$StateHoliday=="a"])
-b1 <- sum(OpenOnHoliday$Sales[OpenOnHoliday$StateHoliday=="b"])
-c1 <- sum(OpenOnHoliday$Sales[OpenOnHoliday$StateHoliday=="c"])
-barplot(c(a1,b1,c1),main="Total sales on each holiday",names.arg = c("a","b","c"))
+sum_a <- sum(OpenOnHoliday$Sales[OpenOnHoliday$StateHoliday=="a"])
+sum_b <- sum(OpenOnHoliday$Sales[OpenOnHoliday$StateHoliday=="b"])
+sum_c <- sum(OpenOnHoliday$Sales[OpenOnHoliday$StateHoliday=="c"])
+barplot(c(sum_a,sum_b,sum_c),main="Total sales on each holiday",names.arg = c("a","b","c"))
 ```
-Within 910 stores that are open on holiday, public holiday (a) saw the highest sale (5890305), significantly more than Easter (b) (1433744) and Christmas (c) (691806)
+
+Within 910 stores that are open on holiday, public holiday (a) saw the highest sale (5890305 - sum_a), significantly more than Easter (b) (1433744- sum_b) and Christmas (c) (691806- sum_c)
 
 Try to compare sales between dates with holiday and non-holiday --> Ask chi Phuong
 
-Sales ~ SchoolHoliday
+Sales in relation to SchoolHoliday
 ```{r}
-m <- 0
-n <- 0
+SaleonHoliday <- 0
+SaleNotOnHoliday <- 0
 for (j in 1:1115) {
   sales1 <- mean(train_store$Sales[train_store$Store==j & train_store$SchoolHoliday==1])
   sales2 <- mean(train_store$Sales[train_store$Store==j & train_store$SchoolHoliday==0])
-  if (sales2-sales1 > 0) { m = m + 1 }
-  else if (sales2-sales1 < 0) { n = n + 1 }
+  if (sales2-sales1 > 0) { SaleonHoliday = SaleonHoliday + 1 }
+  else if (sales2-sales1 < 0) { SaleNotOnHoliday = SaleNotOnHoliday + 1 }
 }
-m
-n
+SaleonHoliday
+SaleNotOnHoliday
 ```
 Sales was significantly lower on school holidays
-Strong predictor value
+--> Strong predictor value
 
-Sales ~ StoreType
+Sales in relation to StoreType
 ```{r}
-a2 <- mean(train_store$Sales[train_store$StoreType=="a"])
-b2 <- mean(train_store$Sales[train_store$StoreType=="b"])
-c2 <- mean(train_store$Sales[train_store$StoreType=="c"])
-d2 <- mean(train_store$Sales[train_store$StoreType=="d"])
-barplot(c(a2,b2,c2,d2),main="Mean sales of each store type",names.arg = c("a","b","c","d"))
+boxplot(Sales ~ StoreType,data=train_store)
 ```
-Type b has the highest sales
+Type b has the highest mean sales
 
 Determine the sales of each PromoInterval
 ```{r}
@@ -240,6 +230,11 @@ avg_a <- mean(train_store$Sales[train_store$Assortment == "a"])
 avg_b <- mean(train_store$Sales[train_store$Assortment == "b"])
 avg_c <- mean(train_store$Sales[train_store$Assortment == "c"])
 barplot(c(avg_a,avg_b,avg_c), main = "Average sales per assortment", names.arg = c("a","b","c"))
+```
+
+Distribution of each assortment
+```{r}
+boxplot(Sales ~ Assortment,data=train_store)
 ```
 
 Customers per assortment
@@ -292,4 +287,4 @@ promoN <- mean(train_store$Sales[train_store$Promo == 0])
 barplot(c(promoY,promoN), main = "Average sales per Promo", names.arg = c("1","0"))
 ```
 
-Sales nearly doubled when there was a promo on that day
+Sales nearly doubled when there was a promo on that day.
