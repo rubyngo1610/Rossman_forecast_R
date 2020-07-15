@@ -13,7 +13,7 @@ library(sqldf)
 library(dplyr)
 ```
 
-Import data
+Import train data
 ```{r}
 train <- read.csv("train.csv")
 ```
@@ -22,7 +22,8 @@ Show the structure of train data
 ```{r}
 str(train)
 ```
-
+Some data fields should be converted to a more suitable data type for the convenience of the explanatory process.
+         
 Change the data type of "Date" from "char" to "date"
 ```{r}
 train$Date <- as.Date(as.character(train$Date))
@@ -37,7 +38,7 @@ train$Promo <- as.factor(as.character(train$Promo))
 train$SchoolHoliday <- as.factor(as.character(train$SchoolHoliday))
 ```
 
-Check if there's any NA
+Check if there's any NA to deal with
 ```{r}
 table (complete.cases (train))
 ```
@@ -46,7 +47,8 @@ no NULL values found
 ```{r}
 summary(train)
 ```
-
+Now the train data is ready for the analysis process. We will move to cleaning the store data.
+  
 Assign column names for store data
 ```{r}
 colNames <- c ("Store", "StoreType",	"Assortment",	"CompetitionDistance",	
@@ -55,7 +57,7 @@ colNames <- c ("Store", "StoreType",	"Assortment",	"CompetitionDistance",
               "PromoParticipationSinceYear", "PromoInterval")
 ```
 
-Read store data
+Import store data
 ```{r}
 store <- read.table ("store.csv", header = TRUE, sep = ",",
                        strip.white = TRUE, col.names = colNames,
@@ -71,7 +73,10 @@ Identify NA cases
 ```{r}
 table (complete.cases (store))
 ```
-
+Take a look at the table summary to identify the NAs
+```{r}
+summary(store)
+```
 Replace the NAs in Competition Distance by its median
 ```{r}
 store$CompetitionDistance[is.na(store$CompetitionDistance)] <- median(store$CompetitionDistance, na.rm=TRUE)
@@ -81,18 +86,13 @@ Replace the remaining NA's by 0
 ```{r}
 store[is.na(store)] <- 0
 ```
+EXPLORATION
 
-Table summary
-```{r}
-summary(store)
-```
-
-Join table using dplyr
+Join train and store tables to further explore other correlations between the data fields of 2 tables
 ```{r}
 train_store <- merge(train, store, by = "Store")
 ```
 
-EXPLORATION
 For graph to show full number
 ```{r}
 options("scipen" = 10)
@@ -209,33 +209,37 @@ boxplot(Sales ~ PromoInterval, data = train_store,
         xlab = "PromoInterval", ylab = "Sales", col = "blue")
 ```
 
-Take a closer look at the Jan, Apr, Jun, Oct interval
+Overall, all intervals share relatively same mean, quartiles, and minimum and maximum values. However, The "Jan, Apr, Jun, Oct" interval had the highest mean and number of outliers.
+Take a closer look at the "Jan, Apr, Jun, Oct" interval
 ```{r}
 summary(train_store[train_store$PromoInterval == "Jan,Apr,Jul,Oct",]$Sales)
 
 sqldf("SELECT PromoInterval, COUNT(PromoInterval) FROM train_store WHERE Sales > 7614 + 1.5 * (7614-3680) GROUP BY PromoInterval")
 ```
-No interval stands out but Jan, Apr, Jun, Oct had the highest mean and number of outliers -> predictor value
+The "Jan, Apr, Jun, Oct" interval's number of outliers are more than 5 times bigger than those of other intervals
 
-Determine the sales of each assortment
+Distribution of each assortment
+```{r}
+boxplot(Sales ~ Assortment,data=train_store)
+```
+We can see that assortment b had the best sales among three assortments  
+
+Determine the sales of each assortment in the timeline
 ```{r}
 ggplot(train_store["Sales" != 0], 
        aes(x = as.Date(Date), y = Sales, color = factor(Assortment))) + 
   geom_smooth(size = 2)
 ```
+Assortment b (b>c>a) always had higher sales than the other assortments
 
-Average sales per assortment
+Let's see if the Average sales per assortment of b assortment would be the same
 ```{r}
 avg_a <- mean(train_store$Sales[train_store$Assortment == "a"])
 avg_b <- mean(train_store$Sales[train_store$Assortment == "b"])
 avg_c <- mean(train_store$Sales[train_store$Assortment == "c"])
 barplot(c(avg_a,avg_b,avg_c), main = "Average sales per assortment", names.arg = c("a","b","c"))
 ```
-
-Distribution of each assortment
-```{r}
-boxplot(Sales ~ Assortment,data=train_store)
-```
+Yes, even its average sales is higher than the others' average sales
 
 Customers per assortment
 ```{r}
@@ -244,11 +248,10 @@ cust_b <- sum(train_store$Customers[train_store$Assortment == "b"])
 cust_c <- sum(train_store$Customers[train_store$Assortment == "c"])
 barplot(c(cust_a,cust_b,cust_c), main = "Customers per assortment", names.arg = c("a","b","c"))
 ```
+Furthermore, the number of customers who bought b are extremely low compare to other assortments'
+--> B's sales performance was far better thanthose of the other two.
 
-Assortment b (b>c>a) had the best sales and always had higher sales than the other assortments, even its average sales. Furthermore, the number of customers who bought b are extremely low compare to other assortments'
---> B's sales performance was good.So why the sales performance of a and c are worse? What qualities did b have?
-
-Correlation between Competition Distance and Sales
+Move on to the correlation between Competition Distance and Sales
 ```{r}
 plot(Sales ~ CompetitionDistance, train_store)
 ```
@@ -256,7 +259,7 @@ plot(Sales ~ CompetitionDistance, train_store)
 There is a clear correlation between sales and competition distance. The plot indicates that the closer the competitor, the lower the sales.
 
 Days since start of promo2
-Need to fix and try to find a way to leverage the data
+! Need to find a way to leverage the data promo2 !
 
 PromoContinuation vs Sales
 ```{r}
@@ -266,15 +269,16 @@ boxplot(Sales ~ PromoContinuation, data = train_store,
 ```
 
 Sales when having a 2nd Promo were less than without a 2nd Promo but not significant
-Consider the promo data on Open days
+
+Since there is 0 sales on closed days. I want to specifically look at the promo data on Open days
 ```{r}
 row_to_keep = which(as.integer(train_store$Open) > 0)
 openday <- train_store[row_to_keep,]
 summary(openday)
 ```
-The numbers of PromoContinuation are nearly equal
+The number of two categories of PromoContinuation are nearly equal, which is good for the comparison of sales between the two.
 
-Sales between promo day and not promo day
+We compare sales between promo day and not promo day
 ```{r}
 ggplot(openday["Sales" != 0], 
        aes(x = as.Date(Date), y = Sales, color = factor(Promo))) + 
