@@ -268,7 +268,7 @@ boxplot(Sales ~ PromoContinuation, data = train_store,
 Sales when having a 2nd Promo were less than without a 2nd Promo but not significant
 Consider the promo data on Open days
 ```{r}
-row_to_keep = which(train_store$Open > 0)
+row_to_keep = which(as.integer(train_store$Open) > 0)
 openday <- train_store[row_to_keep,]
 summary(openday)
 ```
