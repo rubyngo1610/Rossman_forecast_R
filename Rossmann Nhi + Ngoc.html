@@ -11,6 +11,7 @@ Load packages
 library(ggplot2)
 library(sqldf)
 library(dplyr)
+library(reshape2)
 ```
 
 Import train data
@@ -22,11 +23,16 @@ Show the structure of train data
 ```{r}
 str(train)
 ```
+
 Some data fields should be converted to a more suitable data type for the convenience of the explanatory process.
-         
+
+```{r}
+str(train$Date)
+```
+
 Change the data type of "Date" from "char" to "date"
 ```{r}
-train$Date <- as.Date(as.character(train$Date))
+train$Date <- as.Date(train$Date,format = "%m/%d/%y")
 ```
 
 Factorize categorical data fields in train data
@@ -38,16 +44,11 @@ train$Promo <- as.factor(as.character(train$Promo))
 train$SchoolHoliday <- as.factor(as.character(train$SchoolHoliday))
 ```
 
-Check if there's any NA to deal with
-```{r}
-table (complete.cases (train))
-```
-no NULL values found
-
+Check the data modification and identify NA cases in the test table
 ```{r}
 summary(train)
 ```
-Now the train data is ready for the analysis process. We will move to cleaning the store data.
+No NULL values found. Now the train data is ready for the analysis process. We will move to cleaning the store data.
   
 Assign column names for store data
 ```{r}
@@ -112,19 +113,14 @@ MeanSalesPerStore <- vector(mode = "numeric",length = 1115)
 for (i in 1:1115) {
   MeanSalesPerStore[i] <- mean(train_store$Sales[train_store$Store==i])
 }
-match(max(MeanSalesPerStore),MeanSalesPerStore) 
-match(min(MeanSalesPerStore),MeanSalesPerStore) 
 ```
-Store 262 has the max mean sales.
-Store 307 has the min mean sales.
 
 ```{r}
-hist(MeanSalesPerStore,100)
+hist(MeanSalesPerStore,xlab="Sales (€)")
 summary(MeanSalesPerStore)
 ```
-Average sales mostly range from 2500 - 7500.
-The outliers are stores with over 10000 in mean sales.
-Sales vary from stores to stores --> Strong predictor value.
+Sales vary from stores to stores.
+The outliers are stores with over €20719 in mean sales.
 
 Sales vs DayOfWeek
 ```{r}
@@ -132,7 +128,6 @@ boxplot(Sales ~ DayOfWeek,data=train_store)
 ```
 
 Sales of day 7 of the week (Sunday) is extremely low compared to other dates.
---> Strong predictor value.
 
 We will take a closer look at Day 7.
 ```{r}
@@ -143,9 +138,15 @@ Look at "Sales" data, we see that most stores have 0 sales on Sunday, and this i
 
 Now we will check if the stores that were open on Day 7 had sales or not.
 ```{r}
-summary(subset(Day7Sales,Open==1))
+summary(subset(Day7Sales,Open==1,select=c(Sales)))
 ```
 All stores that were opened on Day 7 had sales.
+
+```{r}
+boxplot(Sales ~ DayOfWeek,data=train_store[train_store$Sales!=0,])
+```
+Sales of stores that were opened on Sunday are higher than weekdays.
+We will use this insight to check whether other factors affect the high sales.
 
 Holiday might be a factor of store closure, so we will check that as follow:
 ```{r}
@@ -156,11 +157,15 @@ Therefore, holidays are not a strong factor of store closure like we assumed.
 
 Sales vs Date
 ```{r}
+nrow(unique(train["Date"]))
+```
+There's 942 different dates in the train table.
+
+```{r}
 ggplot(train_store, aes(x=Date,y=Sales)) + geom_smooth() 
 ```
 
-Sales increased from 2013 to 2015
---> Strong predictor value.
+Sales increased from 2013 to 2015, with fluctuations. Sales tend to decrease mid-year and then took off again at the end of the year.
 
 Sales vs Customers
 ```{r}
@@ -168,7 +173,14 @@ ggplot(train_store, aes(x=Date,y=Customers)) + geom_smooth()
 ```
 
 Customers increased from 2013 to 2015.
---> Customers and Sales are positively correlated.
+
+We can see that the Customers' graph shows a similar trend as Sales. We will check for correlation between Sales and Customers.
+```{r}
+Linear <- lm(Sales ~ Customers, data=train_store)
+summary(Linear)
+```
+
+Customers and Sales are strongly correlated (Adjusted R-squared:  0.8005)
 
 Sales vs StateHoliday
 ```{r}
@@ -181,13 +193,12 @@ Sales are significantly lower on holidays.
 Now we want to see which holidays had the most sales.
 ```{r}
 OpenOnHoliday <- subset(train_store,Open==1)
-mean_a <- mean(OpenOnHoliday$Sales[OpenOnHoliday$StateHoliday=="a"])
-mean_b <- mean(OpenOnHoliday$Sales[OpenOnHoliday$StateHoliday=="b"])
-mean_c <- mean(OpenOnHoliday$Sales[OpenOnHoliday$StateHoliday=="c"])
-barplot(c(mean_a,mean_b,mean_c),main="Mean sales on each holiday",names.arg = c("a","b","c"))
+mean(OpenOnHoliday$Sales[OpenOnHoliday$StateHoliday=="a"])
+mean(OpenOnHoliday$Sales[OpenOnHoliday$StateHoliday=="b"])
+mean(OpenOnHoliday$Sales[OpenOnHoliday$StateHoliday=="c"])
 ```
 
-Within 910 stores that are open on holiday, public holiday (a) saw the highest sale (8487.471 - mean_a), significantly more than Easter (b) (9887.89 - mean_b) and Christmas (c) (9743.746 - mean_c).
+Within 910 stores that are open on holiday, Easter (b) saw the highest sale (9887.89), slightly higher than Christmas (c) (9743.746) and significantly higher than public holidays (a) (8487.471).
 
 Sales vs SchoolHoliday
 ```{r}
@@ -201,8 +212,7 @@ Sales vs StoreType
 boxplot(Sales ~ StoreType,data=train_store)
 ```
 
-Type b has the highest mean sales
---> Strong predictor value.
+Type b has the highest mean sales.
 
 Determine the sales of each PromoInterval
 ```{r}
