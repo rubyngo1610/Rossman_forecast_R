@@ -10,8 +10,8 @@ Load packages
 ```{r}
 library(ggplot2)
 library(sqldf)
-library(dplyr)
 library(reshape2)
+library(zoo)
 ```
 
 Import train data
@@ -60,7 +60,7 @@ colNames <- c ("Store", "StoreType",	"Assortment",	"CompetitionDistance",
 
 Import store data
 ```{r}
-store <- read.table ("store.csv", header = TRUE, sep = ",",
+store <- read.table ("D://Dickinson//R Project//store.csv", header = TRUE, sep = ",",
                        strip.white = TRUE, col.names = colNames,
                        na.strings = "?", stringsAsFactors = TRUE)
 ```
@@ -88,6 +88,21 @@ store$CompetitionDistance[is.na(store$CompetitionDistance)] <- median(store$Comp
 Replace the remaining NA's by 0
 ```{r}
 store[is.na(store)] <- 0
+```
+
+Factorize categorical data fields in store data
+```{r}
+store$Store <- as.factor(as.integer(store$Store))
+store$CompetitionOpenSinceYear <- as.factor(as.character(store$CompetitionOpenSinceYear))
+store$CompetitionOpenSinceMonth <- as.factor(as.character(store$CompetitionOpenSinceMonth))
+store$PromoContinuation <- as.factor(as.character(store$PromoContinuation))
+store$PromoParticipationSinceWeek <- as.factor(as.character(store$PromoParticipationSinceWeek))
+store$PromoParticipationSinceYear <- as.factor(as.character(store$PromoParticipationSinceYear))
+```
+
+double check the store's summary
+```{r}
+summary(store)
 ```
 
 EXPLORATION
@@ -214,48 +229,22 @@ boxplot(Sales ~ StoreType,data=train_store)
 
 Type b has the highest mean sales.
 
-Determine the sales of each PromoInterval
-```{r}
-boxplot(Sales ~ PromoInterval, data = train_store,
-        main = "Sales based on the PromoInterval",
-        xlab = "PromoInterval", ylab = "Sales", col = "blue")
-```
-
-Overall, all intervals share relatively same mean, quartiles, and minimum and maximum values. However, The "Jan, Apr, Jun, Oct" interval had the highest mean and number of outliers.
-
-Take a closer look at the "Jan, Apr, Jun, Oct" interval
-```{r}
-summary(train_store[train_store$PromoInterval == "Jan,Apr,Jul,Oct",]$Sales)
-
-sqldf("SELECT PromoInterval, COUNT(PromoInterval) FROM train_store WHERE Sales > 7614 + 1.5 * (7614-3680) GROUP BY PromoInterval")
-```
-The "Jan, Apr, Jun, Oct" interval's number of outliers are more than 5 times bigger than those of other intervals.
-
 Distribution of each assortment
+
 ```{r}
 boxplot(Sales ~ Assortment,data=train_store)
 ```
 
-We can see that assortment b had the best sales among three assortments.  
+We can see that assortment b had the best sales among three assortments. Even its average sales is higher than the others' average sales.
 
-Determine the sales of each assortment in the timeline
+Determine the sales of each assortment by dates
 ```{r}
 ggplot(train_store["Sales" != 0], 
-       aes(x = as.Date(Date), y = Sales, color = factor(Assortment))) + 
-  geom_smooth(size = 2)
+       aes(x = as.Date(Date), y = Sales, color = Assortment)) + 
+  geom_smooth(size = 1.5) + xlab("Date")
 ```
 
-Assortment b (b>c>a) always had higher sales than the other assortments.
-
-Let's see if the Average sales per assortment of b assortment would be the same
-```{r}
-avg_a <- mean(train_store$Sales[train_store$Assortment == "a"])
-avg_b <- mean(train_store$Sales[train_store$Assortment == "b"])
-avg_c <- mean(train_store$Sales[train_store$Assortment == "c"])
-barplot(c(avg_a,avg_b,avg_c), main = "Average sales per assortment", names.arg = c("a","b","c"))
-```
-
-Yes, even its average sales is higher than the others' average sales.
+Assortment b always had higher sales than the other assortments whereas c and a's performances shared the same shape
 
 Customers per assortment
 ```{r}
@@ -265,19 +254,38 @@ cust_c <- sum(train_store$Customers[train_store$Assortment == "c"])
 barplot(c(cust_a,cust_b,cust_c), main = "Customers per assortment", names.arg = c("a","b","c"))
 ```
 
-Furthermore, the number of customers who bought b are extremely low compare to other assortments'
---> B's sales performance was far better thanthose of the other two.
+Furthermore, the number of customers who bought b assortment is extremely low compare to other assortments'. Hence, b assortment could be a totally different type of product while a and c might be related to each other. Based on the sales trend of b, there are 2 assumptions considered. First, although having a low number of customers, b assortment could be a product type that could be bought with a large amount. Second, the price of b assortment is much more higher than those of a and c. These are interesting insights than can be reffered to later in the exploration process.
 
-Move on to the correlation between Competition Distance and Sales
+We move on to the correlation between Competition Distance and Sales on open days
 ```{r}
-plot(Sales ~ CompetitionDistance, train_store)
+CDopenday <- sqldf("Select CompetitionDistance, avg(Sales) as AvgSales from train_store where Open = 1 group by store")
+CDmodel = lm(AvgSales ~ CompetitionDistance, data = CDopenday)
+CDmodelsum = summary(CDmodel)
+plot(AvgSales ~ CompetitionDistance,CDopenday)
+abline(CDmodel, col = 'blue')
+legend("topright", bty = "n", legend = paste("R2 =", format(CDmodelsum$adj.r.squared, digits = 4)))
 ```
 
-There is a clear correlation between sales and competition distance. The plot indicates that the closer the competitor, the lower the sales.
+There is nearly no correlation between sales and competition distance. Competition Distance may not be considered in the model later
+
+Let's see which month and year these competition opened
+```{r fig.height = 5, fig.width = 10}
+CompeteYear <- sqldf("select CompetitionOpenSinceYear as SinceYear, sum(Sales) as Sales, count(CompetitionOpenSinceYear) as CompetitionYearOpenFrequency from train_store where CompetitionOpenSinceYear <> 0 group by CompetitionOpenSinceYear")
+CompeteYear$SinceYear <- as.numeric(as.character(CompeteYear$SinceYear))
+CompeteYear <- melt(CompeteYear,id = "SinceYear")
+ggplot(data=CompeteYear, aes(x = SinceYear, y= value, colour = variable), xlab="Since Year") + geom_line(size=1)
+```
+Sales slightly followed the trend of the number of competitions open from 1900 until 2015. However, the change of number of competitor do not affect much the sales of Rossman stores. The sales coulf be impacted by the other elements.
 
 Days since start of promo2
 
-!! Need to find a way to leverage the data promo2 !!
+```{r fig.height = 5, fig.width = 10}
+Promo2Year <- sqldf("select PromoParticipationSinceYear as PromoSinceYear, sum(Sales) as Sales, count(PromoParticipationSinceYear) as PromoYearFrequency from train_store where PromoSinceYear <> 0 group by PromoSinceYear")
+Promo2Year$PromoSinceYear <- as.numeric(as.character(Promo2Year$PromoSinceYear))
+Promo2Year <- melt(Promo2Year,id = "PromoSinceYear")
+ggplot(data=Promo2Year, aes(x = PromoSinceYear, y= value, colour = variable), xlab="Promo Since Year") + geom_line(size=1)
+
+```
 
 PromoContinuation vs Sales
 ```{r}
@@ -286,21 +294,20 @@ boxplot(Sales ~ PromoContinuation, data = train_store,
         xlab = "PromoContinuation", ylab = "Sales", col = "yellow")
 ```
 
-Sales when having a 2nd Promo were less than without a 2nd Promo but not significant
+Sales when having a 2nd Promo were less than without a 2nd Promo but it is not significant. The reason for this trend may because the 2nd Promo was not as effective as the first promo.
 
-Since there is 0 sales on closed days, I want to specifically look at the promo data on Open days
+Since there is 0 sales on closed days, I want to specifically look at the PromoContinuation data on Open days.
+The number of two categories of PromoContinuation are nearly equal, which is good for the comparison of sales between the two.
 ```{r}
 row_to_keep = which(as.integer(train_store$Open) > 0)
 openday <- train_store[row_to_keep,]
-summary(openday)
 ```
-The number of two categories of PromoContinuation are nearly equal, which is good for the comparison of sales between the two.
 
 We compare sales between promo day and not promo day
 ```{r}
 ggplot(openday["Sales" != 0], 
        aes(x = as.Date(Date), y = Sales, color = factor(Promo))) + 
-  geom_smooth(size = 2) + xlab("Date")
+  geom_smooth(size = 1.5) + xlab("Date")
 promoY <- mean(train_store$Sales[train_store$Promo == 1])
 promoN <- mean(train_store$Sales[train_store$Promo == 0])
 ```
@@ -309,4 +316,20 @@ promoN <- mean(train_store$Sales[train_store$Promo == 0])
 barplot(c(promoY,promoN), main = "Average sales per Promo", names.arg = c("1","0"))
 ```
 
-Sales nearly doubled when there was a promo on that day.
+The graph follow the sales trend where sales dropped midyear and increase at the end of the year.Sales nearly doubled when there was a promo on that day. This is another trend that shoud be taken into consideration.
+
+Determine the sales of each PromoInterval
+```{r}
+IntervalsOnly <- subset(train_store, PromoInterval == 'Feb,May,Aug,Nov'| PromoInterval == 'Jan,Apr,Jul,Oct'|PromoInterval == 'Mar,Jun,Sept,Dec')
+boxplot(Sales ~ PromoInterval, data = IntervalsOnly,
+        main = "Sales based on the Promo Interval",
+        xlab = "PromoInterval", ylab = "Sales", col = "blue")
+```
+
+Overall, all intervals share relatively same mean, quartiles, and minimum and maximum values. However, The "Feb,May,Aug,Nov" interval had the highest outlier
+
+I will take a closer look at that row
+```{r}
+sqldf("SELECT * FROM IntervalsOnly WHERE PromoInterval = 'Feb,May,Aug,Nov' ORDER BY Sales Desc LIMIT 1")
+```
+It can be clearly seen that this is the highest sales from the data. It is interesting that this store is a type a store, which sales performance wasn't as outstanding as store type b and it sold assortment c, which did not contribute high sales as high as assortment b. However, it follows the 4 trends estabished, which futher support their importance to the model. Therefore, PromoInterval did not have significant impact on Sales.
