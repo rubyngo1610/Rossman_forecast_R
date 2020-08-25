@@ -4,8 +4,8 @@ For this challenge, we are given records of sales of each store on different dat
 Check the R markdown versions at https://rpubs.com/rubyngo/rossmann_sales (Linear Regression) and https://rpubs.com/nhihuynh107/645818 (Random Forest) where you can see the outputs and graphs fully displayed.
 
 ## Collaborators
-- Ngoc (Ruby) Ngo
-- Nhi Huynh
+- Ngoc (Ruby) Ngo (Quantitative Econ/ Music - Dickinson College)
+- Nhi Huynh (ChemE/ Supply Chain - CWRU)
 
 ## What inspired us to make this?
 In Summer 2020, we, a Chemical Engineering/ Supply Chain major and a Quantitative Economics + Music Performance major teamed up to work on our first-ever data analytics project. While we came from completely different backgrounds, we shared a genuine interest in strengthening our skills in analyzing data and modeling. After spending some time on Kaggle.com, we came across this challenge that fitted both of our academic interests: Rossmann Store Sales (https://www.kaggle.com/c/rossmann-store-sales).
