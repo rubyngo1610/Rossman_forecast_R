@@ -1,17 +1,13 @@
----
-title: "Rossmann_Cleaning&Exploration"
-author: "Ngoc Ngo & Nhi Huynh"
-date: "7/15/2020"
-output: html_document
----
 DATA CLEANSING
 
 Load packages
 ```{r}
 library(ggplot2)
 library(sqldf)
-library(reshape2)
 library(zoo)
+library(reshape2)
+library(readr)
+library(randomForest)
 ```
 
 Import train data
@@ -39,9 +35,9 @@ Factorize categorical data fields in train data
 ```{r}
 train$DayOfWeek <- as.factor(as.integer(train$DayOfWeek))
 train$StateHoliday <- as.factor(as.character(train$StateHoliday))
-train$Open <- as.factor(as.character(train$Open))
-train$Promo <- as.factor(as.character(train$Promo))
-train$SchoolHoliday <- as.factor(as.character(train$SchoolHoliday))
+train$Open <- as.factor(as.integer(train$Open))
+train$Promo <- as.factor(as.integer(train$Promo))
+train$SchoolHoliday <- as.factor(as.integer(train$SchoolHoliday))
 ```
 
 Check the data modification and identify NA cases in the test table
@@ -60,7 +56,7 @@ colNames <- c ("Store", "StoreType",	"Assortment",	"CompetitionDistance",
 
 Import store data
 ```{r}
-store <- read.table ("D://Dickinson//R Project//store.csv", header = TRUE, sep = ",",
+store <- read.table ("store.csv", header = TRUE, sep = ",",
                        strip.white = TRUE, col.names = colNames,
                        na.strings = "?", stringsAsFactors = TRUE)
 ```
@@ -93,14 +89,14 @@ store[is.na(store)] <- 0
 Factorize categorical data fields in store data
 ```{r}
 store$Store <- as.factor(as.integer(store$Store))
-store$CompetitionOpenSinceYear <- as.factor(as.character(store$CompetitionOpenSinceYear))
-store$CompetitionOpenSinceMonth <- as.factor(as.character(store$CompetitionOpenSinceMonth))
-store$PromoContinuation <- as.factor(as.character(store$PromoContinuation))
-store$PromoParticipationSinceWeek <- as.factor(as.character(store$PromoParticipationSinceWeek))
-store$PromoParticipationSinceYear <- as.factor(as.character(store$PromoParticipationSinceYear))
+store$CompetitionOpenSinceYear <- as.factor(as.integer(store$CompetitionOpenSinceYear))
+store$CompetitionOpenSinceMonth <- as.factor(as.integer(store$CompetitionOpenSinceMonth))
+store$PromoContinuation <- as.factor(as.integer(store$PromoContinuation))
+store$PromoParticipationSinceWeek <- as.factor(as.integer(store$PromoParticipationSinceWeek))
+store$PromoParticipationSinceYear <- as.factor(as.integer(store$PromoParticipationSinceYear))
 ```
 
-double check the store's summary
+Double check the store's summary
 ```{r}
 summary(store)
 ```
@@ -160,6 +156,7 @@ All stores that were opened on Day 7 had sales.
 ```{r}
 boxplot(Sales ~ DayOfWeek,data=train_store[train_store$Sales!=0,])
 ```
+
 Sales of stores that were opened on Sunday are higher than weekdays.
 We will use this insight to check whether other factors affect the high sales.
 
@@ -269,18 +266,19 @@ legend("topright", bty = "n", legend = paste("R2 =", format(CDmodelsum$adj.r.squ
 There is nearly no correlation between sales and competition distance. Competition Distance may not be considered in the model later
 
 Let's see which month and year these competition opened
-```{r fig.height = 5, fig.width = 10}
-CompeteYear <- sqldf("select CompetitionOpenSinceYear as SinceYear, sum(Sales) as Sales, count(CompetitionOpenSinceYear) as CompetitionYearOpenFrequency from train_store where CompetitionOpenSinceYear <> 0 group by CompetitionOpenSinceYear")
+```{r}
+CompeteYear <- sqldf("select CompetitionOpenSinceYear as SinceYear, log(sum(Sales)) as Sales, log(count(CompetitionOpenSinceYear)) as CompetitionYearOpenFrequency from train_store where CompetitionOpenSinceYear <> 0 group by CompetitionOpenSinceYear")
 CompeteYear$SinceYear <- as.numeric(as.character(CompeteYear$SinceYear))
 CompeteYear <- melt(CompeteYear,id = "SinceYear")
 ggplot(data=CompeteYear, aes(x = SinceYear, y= value, colour = variable), xlab="Since Year") + geom_line(size=1)
 ```
-Sales slightly followed the trend of the number of competitions open from 1900 until 2015. However, the change of number of competitor do not affect much the sales of Rossman stores. The sales coulf be impacted by the other elements.
 
-Days since start of promo2
+Sales slightly followed the trend of the number of competitions open from 1900 until 2015. However, the change of number of competitor do not affect much the sales of Rossmann stores. The sales could be impacted by the other elements.
 
-```{r fig.height = 5, fig.width = 10}
-Promo2Year <- sqldf("select PromoParticipationSinceYear as PromoSinceYear, sum(Sales) as Sales, count(PromoParticipationSinceYear) as PromoYearFrequency from train_store where PromoSinceYear <> 0 group by PromoSinceYear")
+Days since start of Promo2 (PromoContinuation)
+
+```{r}
+Promo2Year <- sqldf("select PromoParticipationSinceYear as PromoSinceYear, log(sum(Sales)) as Sales, log(count(PromoParticipationSinceYear)) as PromoYearFrequency from train_store where PromoSinceYear <> 0 group by PromoSinceYear")
 Promo2Year$PromoSinceYear <- as.numeric(as.character(Promo2Year$PromoSinceYear))
 Promo2Year <- melt(Promo2Year,id = "PromoSinceYear")
 ggplot(data=Promo2Year, aes(x = PromoSinceYear, y= value, colour = variable), xlab="Promo Since Year") + geom_line(size=1)
@@ -333,3 +331,57 @@ I will take a closer look at that row
 sqldf("SELECT * FROM IntervalsOnly WHERE PromoInterval = 'Feb,May,Aug,Nov' ORDER BY Sales Desc LIMIT 1")
 ```
 It can be clearly seen that this is the highest sales from the data. It is interesting that this store is a type a store, which sales performance wasn't as outstanding as store type b and it sold assortment c, which did not contribute high sales as high as assortment b. However, it follows the 4 trends estabished, which futher support their importance to the model. Therefore, PromoInterval did not have significant impact on Sales.
+
+DATA MODELING - LINEAR REGRESSION
+
+Import test data
+```{r}
+test <- read.csv("test.csv")
+test_store <- merge(test,store,by="Store")
+```
+
+Split train data: We will first test it with the train data first. We will split the train data so that 70% is used for modeling and 30% is used for testing.
+```{r}
+index = sample(2,nrow(train_store),replace = TRUE, prob=c(0.7,0.3))
+train70 <- train_store[index==1,]
+train30 <- train_store[index==2,]
+```
+
+Build the model
+```{r}
+train_store$Promo <- as.integer(as.factor(train_store$Promo))
+train_store$DayOfWeek <- as.integer(as.factor(train_store$DayOfWeek))
+train_store$Open <- as.integer(as.factor(train_store$Open))
+lrMod <- lm(Sales ~ Store + Open + SchoolHoliday + PromoInterval + DayOfWeek + StateHoliday + DayOfWeek*StateHoliday + Promo + StoreType + Assortment + StoreType*Assortment + PromoContinuation, data=train70)
+```
+
+Use interactive terms: StoreType vs Assortment
+```{r}
+pred <- predict(lrMod, train30)
+summary (lrMod) 
+```
+
+Calculating Prediction Accuracy
+```{r}
+actuals_preds <- data.frame(cbind(actuals=train30$Sales, predicteds=pred))
+correlation_accuracy <- cor(actuals_preds)
+correlation_accuracy
+
+```
+
+Apply the model to the test data
+```{r}
+
+lrMod <- lm(Sales ~ Store + Open + DayOfWeek + StateHoliday + DayOfWeek*StateHoliday + Promo + StoreType + Assortment + StoreType*Assortment + PromoContinuation, data=train_store)  
+pred <- predict(lrMod, test_store)
+summary (lrMod) 
+```
+
+Save the predicted sales to file .csv
+```{r}
+sales_forecast <- data.frame(Id=test_store$Id, Sales=pred)
+write.csv(sales_forecast,"LinearRegressionRossmann.csv")
+```
+
+CONCLUSION
+We successfully generated sales predictions for the Rossmann store chain 6 weeks in advance using linear regression. While conducting exploratory data analysis for modeling, we found many interesting insights. Although many stores were closed on Sunday, those that were opened saw a great amount of sales revenue. Assortment b had the highest sales, but it was only available in tybe-b stores among 4 types of store in total. We hope that these findings will be helpful for business decision-makers to optimize their profits.
