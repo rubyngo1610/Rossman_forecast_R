@@ -122,36 +122,4 @@ pred_demo <- exp(predict(model_demo, train30)) -1
 1 - mean(abs(train30$Sales - pred_demo)/pred_demo)
 ```
 
-The accuracy of this model is 88.47%.
-Thus, we apply this model to predict the sales for the test data.
 
-```{r}
-feature.names <- names(train_store)[c(1,2,5:20)]
-feature.names
-```
-
-```{r}
-for (f in feature.names) {
-  if (class(train_store[[f]])=="character") {
-    levels <- unique(c(train_store[[f]], test_store[[f]]))
-    train_store[[f]] <- as.integer(factor(train_store[[f]], levels=levels))
-    test_store[[f]]  <- as.integer(factor(test_store[[f]],  levels=levels))
-  }
-}
-```
-
-Apply the Random Forest model
-```{r}
-model <- randomForest(train_store[,feature.names], 
-                    log(train_store$Sales+1), 
-                    ntree=17,
-                    sampsize=100000, 
-                    do.trace=TRUE)
-```
-
-Predict Sales and save the results in a .csv document
-```{r}
-pred <- exp(predict(model,test_store)) -1
-sales_forecast <- data.frame(Id=test_store$Id, Sales=pred)
-write_csv(sales_forecast,"SalesForecastRossman.csv") 
-```
