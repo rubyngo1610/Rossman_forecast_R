@@ -1,7 +1,7 @@
 # Rossmann Store Sales Forecast using R
 For this challenge, we are given records of sales of each store on different dates of Rossmann, a Germany drug store chain with over 3790 stores in Europe, from 01/01/2013 to 31/07/2015. Sales can be affected by many factors such as holidays, promotions and competitions. Our goal is to explore the correlations between these features using R and utilize the results of this exploratory data analysis to build a linear regression model that predicts the store sales from 08/01/2015 to 09/17/2015, 6 weeks in advance.
 
-Check the R markdown versions at https://rpubs.com/rubyngo/rossmann_sales (Linear Regression) and https://rpubs.com/nhihuynh107/645818 (Random Forest) where you can see the outputs and graphs fully displayed.
+Check the R markdown versions at https://rpubs.com/rubyngo/652295 (Linear Regression) and https://rpubs.com/nhihuynh107/645818 (Random Forest) where you can see the outputs and graphs fully displayed.
 
 ## Collaborators
 - Ngoc (Ruby) Ngo (Quantitative Econ/ Music - Dickinson College)
