@@ -1,7 +1,7 @@
 ---
 title: "Rossmann Store Sales - Data Modeling (Random Forest)"
 author: "Nhi Huynh & Ngoc Ngo"
-date: "8/3/2020"
+date: "8/24/2020"
 output: html_document
 ---
 
